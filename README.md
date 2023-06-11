@@ -109,7 +109,7 @@ To run the code, please change the argument 'root' to the path where the dataset
         --num_images 50000 --batch_size 512 \
         --notrain \
         --eval \
-        --sample_method cfg  --omega 2.2
+        --sample_method cfg  --omega 2.0
     ```
 
 ## References
