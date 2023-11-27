@@ -72,6 +72,8 @@ flags.DEFINE_string('sample_name', 'saved', help='name for a set of samples to b
 flags.DEFINE_bool('sampled', False, help='evaluate sampled images')
 flags.DEFINE_string('sample_method', 'cfg', help='sampling method, must be in [cfg, cond, uncond]')
 flags.DEFINE_float('omega', 0.0, help='guidance strength for cfg sampling method')
+flags.DEFINE_bool('prd', True, help='evaluate precision and recall (F_beta), only evaluated with 50k samples')
+flags.DEFINE_bool('improved_prd', True, help='evaluate improved precision and recall, only evaluated with 50k samples')
 # CBDM hyperparameters
 flags.DEFINE_bool('cb', False, help='train with class-balancing(adjustment) loss')
 flags.DEFINE_float('tau', 1.0, help='weight for the class-balancing(adjustment) loss')
@@ -149,11 +151,11 @@ def evaluate(sampler, model, sampled):
                                     FLAGS.sample_method, FLAGS.omega, FLAGS.sample_name)),
         nrow=16)
 
-    (IS, IS_std), FID = get_inception_and_fid_score(
-        images, FLAGS.fid_cache, num_images=FLAGS.num_images,
+    (IS, IS_std), FID, prd_score, ipr = get_inception_and_fid_score(
+        images, labels, FLAGS.fid_cache, num_images=FLAGS.num_images,
         use_torch=FLAGS.fid_use_torch, FLAGS=FLAGS)
 
-    return (IS, IS_std), FID
+    return (IS, IS_std), FID, prd_score, ipr
 
 
 def train():
@@ -199,7 +201,7 @@ def train():
                 download=True)
     elif FLAGS.data_type == 'cifar100lt':
         dataset = ImbalanceCIFAR100(
-                root=FLAGS.root,
+                root='/GPFS/data/yimingqin/dd_code/backdoor/benchmarks/pytorch-ddpm/data',
                 # root='...',
                 imb_type='exp',
                 imb_factor=FLAGS.imb_factor,
@@ -369,7 +371,6 @@ def eval():
     # load ema model (almost always better than the model) and evaluate
     ckpt = torch.load(os.path.join(FLAGS.logdir, 'ckpt_{}.pt'.format(FLAGS.ckpt_step)), map_location='cpu')
 
-
     # evaluate IS/FID
     if 'cifar100' in FLAGS.data_type:
         FLAGS.fid_cache = './stats/cifar100.train.npz'
@@ -381,17 +382,18 @@ def eval():
     else:
         model = None
 
-    (IS, IS_std), FID = evaluate(sampler, model, FLAGS.sampled)
+    (IS, IS_std), FID, prd_score, ipr = evaluate(sampler, model, FLAGS.sampled)
 
     print('logdir', FLAGS.logdir)
+    print("Model(EMA): IS:%6.5f(%.5f), FID/CIFAR100:%7.5f \n" % (IS, IS_std, FID))
+    print("Improved PRD:%6.5f, RECALL:%7.5f \n" % (ipr[0], ipr[1]))
+    print("PRD PRECISION FOR 100 CLASSES:%6.5f, RECALL:%7.5f \n" % (prd_score[0], prd_score[1]))
+
     with open(os.path.join(FLAGS.logdir,  'res_ema_{}.txt'.format(FLAGS.sample_name)), 'a+') as f:
-        f.write('Settings: NUM:{} STEP:{}, OMEGA:{}, METHOD:{} \n' .format (
-            FLAGS.num_images, FLAGS.ckpt_step, FLAGS.omega, FLAGS.sample_method))
-        f.write('Model(EMA): IS:%6.5f(%.5f), FID/CIFAR100:%7.5f \n' % (IS, IS_std, FID))
-    f.close()
-
-    print('Model(EMA): IS:%6.5f(%.5f), FID/CIFAR100:%7.5f \n' % (IS, IS_std, FID))
-
+        f.write("Settings: NUM:{} EPOCH:{}, OMEGA:{}, RHO:{}, METHOD:{} \n" .format (FLAGS.num_images, FLAGS.ckpt_step, FLAGS.omega, FLAGS.rho,  FLAGS.sample_method))
+        f.write("Model(EMA): IS:%6.5f(%.5f), FID/CIFAR100:%7.5f \n" % (IS, IS_std, FID))
+        f.write("Improved PRD:%6.5f, RECALL:%7.5f \n" % (ipr[0], ipr[1]))
+        f.write("PRD PRECISION FOR 100 CLASSES:%6.5f, RECALL:%7.5f \n" % (prd_score[0], prd_score[1]))
     f.close()
 
 

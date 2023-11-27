@@ -15,6 +15,11 @@ The repo is implemented based on [https://github.com/w86763777/pytorch-ddpm](htt
 We provide mainly the scripts for trianing and evaluating the CIFAR100LT dataset.
 To run the code, please change the argument 'root' to the path where the dataset is downloaded.
 
+## Files used in evaluation
+
+Please find the [features for cifar 100 and cifar 10](https://drive.google.com/drive/folders/1Y89vu9DGiQsHl8YvwMrr_7UT4p4Pg_wV?usp=sharing) used in precision/recall/f_beta metrics. Put them in the stats folder and the codes will be ready to run. Note that those two metrics will only be evaluated if the number of samples is 50k otherwise it returns 0.
+
+
 ### Train a model
 * Regular conditional diffusion model training, supporting the classifier-free guidance (cfg) sampling
     ```

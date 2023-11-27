@@ -7,11 +7,14 @@ import os
 from .inception import InceptionV3
 from .fid import calculate_frechet_distance, torch_cov
 
+from .improved_prd import IPR
+from .prd_score import compute_prd_from_embedding, prd_to_max_f_beta_pair
+
 
 device = torch.device('cuda:0')
 
 
-def get_inception_and_fid_score(images, fid_cache, num_images=None,
+def get_inception_and_fid_score(images, labels, fid_cache, num_images=None,
                                 splits=10, batch_size=50,
                                 use_torch=False,
                                 verbose=False,
@@ -119,7 +122,44 @@ def get_inception_and_fid_score(images, fid_cache, num_images=None,
         s1 = np.cov(fid_acts, rowvar=False)
     fid_score = calculate_frechet_distance(m1, s1, m2, s2, use_torch=use_torch)
 
+    # prd
+    print('calculate prd (F_beta)')
+    prd_score = (0, 0)
+    if FLAGS.prd and len(fid_acts)==50000:
+        import pdb; pdb.set_trace()
+        feats = np.load('./stats/{}_feats.npy'.format(FLAGS.data_type[:-2]))
+        feats = torch.Tensor(feats)
+        if isinstance(fid_acts, np.ndarray):
+            fid_acts = torch.Tensor(fid_acts)
+        num_clusters = len(np.unique(labels)) * 20
+        prd_data = compute_prd_from_embedding(
+            eval_data=fid_acts,
+            ref_data=feats,
+            num_clusters=num_clusters,
+            num_angles=1001,
+            num_runs=10,
+            enforce_balance=True)
+        prd_data = compute_prd_from_embedding(eval_data=fid_acts,ref_data=feats,num_clusters=num_clusters,num_angles=1001,num_runs=10,enforce_balance=True)
+        prd_score = prd_to_max_f_beta_pair(prd_data[0], prd_data[1], beta=8) # precision/recall
+        # print('prd_score', prd_score)
+
+    # improved prd
+    print('calculate improved prd (precision/recall)')
+    im_prd = (0, 0)
+    if FLAGS.improved_prd and len(fid_acts)==50000:
+        feats = np.load('./stats/{}_feats.npy'.format(FLAGS.data_type[:-2]))
+        if isinstance(fid_acts, torch.Tensor):
+            fid_acts = fid_acts.numpy()
+        ipr = IPR(32, k=5, num_samples=50000, model='InceptionV3')
+        ipr.compute_manifold_ref(None, feats=feats)  # args.path_real can be either directory or pre-computed manifold file
+        metric = ipr.precision_and_recall(images, subject_feats=fid_acts)
+        im_prd = (metric.precision, metric.recall)
+        # print('precision =', metric.precision)
+        # print('recall =', metric.recall)
+
     print('fid', fid_score)
     print('is', is_score)
+    print('prd_score', prd_score)
+    print('Improved precison', im_prd[0], 'Improved recall', im_prd[1])
 
-    return is_score, fid_score
+    return is_score, fid_score, prd_score, im_prd
