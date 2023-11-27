@@ -114,7 +114,7 @@ Please find the [features for cifar 100 and cifar 10](https://drive.google.com/d
         --num_images 50000 --batch_size 512 \
         --notrain \
         --eval \
-        --sample_method cfg  --omega 2.2
+        --sample_method cfg  --omega 2.0
     ```
 
 ## References
