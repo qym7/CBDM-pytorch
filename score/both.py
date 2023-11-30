@@ -126,8 +126,13 @@ def get_inception_and_fid_score(images, labels, fid_cache, num_images=None,
     print('calculate prd (F_beta)')
     prd_score = (0, 0)
     if FLAGS.prd and len(fid_acts)==50000:
-        import pdb; pdb.set_trace()
-        feats = np.load('./stats/{}_feats.npy'.format(FLAGS.data_type[:-2]))
+        # import pdb; pdb.set_trace()
+      
+        print(FLAGS.data_type)
+        if FLAGS.data_type == "cifar100" or FLAGS.data_type == "cifar100lt":
+           feats = np.load('/mnt/workspace/dlly/ucm3/stats/cifar100_feats.npy')
+        elif FLAGS.data_type == "cifar10" or FLAGS.data_type == "cifar10lt":
+           feats = np.load('/mnt/workspace/dlly/ucm3/stats/cifar10_feats.npy')
         feats = torch.Tensor(feats)
         if isinstance(fid_acts, np.ndarray):
             fid_acts = torch.Tensor(fid_acts)
@@ -147,7 +152,11 @@ def get_inception_and_fid_score(images, labels, fid_cache, num_images=None,
     print('calculate improved prd (precision/recall)')
     im_prd = (0, 0)
     if FLAGS.improved_prd and len(fid_acts)==50000:
-        feats = np.load('./stats/{}_feats.npy'.format(FLAGS.data_type[:-2]))
+        print(FLAGS.data_type)
+        if FLAGS.data_type == "cifar100" or FLAGS.data_type == "cifar100lt":
+           feats = np.load('/mnt/workspace/dlly/ucm3/stats/cifar100_feats.npy')
+        elif FLAGS.data_type == "cifar10" or FLAGS.data_type == "cifar10lt":
+           feats = np.load('/mnt/workspace/dlly/ucm3/stats/cifar10_feats.npy')
         if isinstance(fid_acts, torch.Tensor):
             fid_acts = fid_acts.numpy()
         ipr = IPR(32, k=5, num_samples=50000, model='InceptionV3')
